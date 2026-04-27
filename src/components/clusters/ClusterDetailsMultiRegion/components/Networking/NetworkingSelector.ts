@@ -3,6 +3,7 @@ import { Ingress } from '~/types/clusters_mgmt.v1';
 import {
   LoadBalancerFlavor,
   NamespaceOwnershipPolicy,
+  SchemaNamespaceSelector,
   WildcardPolicy,
 } from '~/types/clusters_mgmt.v1/enums';
 
@@ -15,6 +16,55 @@ export const routeSelectorsAsString = (routeSelectors: RouteSelectors = {}) =>
 export const excludedNamespacesAsString = (namespaces?: string[]) =>
   arrayToString(namespaces) || '';
 
+export const excludeNamespaceSelectorsAsString = (
+  selectors?: SchemaNamespaceSelector[],
+): string => {
+  if (!selectors?.length) return '';
+  return selectors
+    .map((s) => {
+      const values = s.values ?? [];
+      return `${s.key}=[${values.join(', ')}]`;
+    })
+    .join(', ');
+};
+
+export const stringToExcludeNamespaceSelectors = (input: string): SchemaNamespaceSelector[] => {
+  if (!input?.trim()) return [];
+
+  const entries: string[] = [];
+  let depth = 0;
+  let current = '';
+  for (const char of input) {
+    if (char === '[') depth++;
+    else if (char === ']') depth--;
+    else if (char === ',' && depth === 0) {
+      entries.push(current.trim());
+      current = '';
+      continue;
+    }
+    current += char;
+  }
+  if (current.trim()) entries.push(current.trim());
+
+  return entries.reduce<SchemaNamespaceSelector[]>((acc, entry) => {
+    const eqIdx = entry.indexOf('=');
+    if (eqIdx === -1) return acc;
+    const key = entry.slice(0, eqIdx).trim();
+    if (!key) return acc;
+    const rawValue = entry.slice(eqIdx + 1).trim();
+    const values =
+      rawValue.startsWith('[') && rawValue.endsWith(']')
+        ? rawValue
+            .slice(1, -1)
+            .split(',')
+            .map((v) => v.trim())
+            .filter(Boolean)
+        : [rawValue];
+    acc.push({ key, values });
+    return acc;
+  }, []);
+};
+
 export type RouteSelectors = Ingress['route_selectors'];
 
 export type ClusterRouter = {
@@ -25,6 +75,7 @@ export type ClusterRouter = {
   loadBalancer?: LoadBalancerFlavor;
   routeSelectors?: RouteSelectors;
   excludedNamespaces?: string[];
+  excludeNamespaceSelectors?: SchemaNamespaceSelector[];
   isNamespaceOwnershipPolicyStrict: boolean;
   isWildcardPolicyAllowed: boolean;
   tlsSecretRef?: string;
@@ -47,6 +98,7 @@ const NetworkingSelector = (clusterRouters: Ingress[]): ClusterRouters => {
       loadBalancer: r.load_balancer_type as LoadBalancerFlavor,
       routeSelectors: r.route_selectors,
       excludedNamespaces: r.excluded_namespaces,
+      excludeNamespaceSelectors: r.excluded_namespace_selectors,
       // Default is NamespaceOwnershipPolicy.Strict if route_namespace_ownership_policy not set
       isNamespaceOwnershipPolicyStrict:
         r.route_namespace_ownership_policy !== NamespaceOwnershipPolicy.InterNamespaceAllowed,

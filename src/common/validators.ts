@@ -1759,6 +1759,33 @@ const validateNamespacesList = (value = '') => {
   return undefined;
 };
 
+// Validates comma-separated label selectors of the form key=value or key=[val1, val2]
+const SELECTOR_ENTRY_RE = /^[^=\s]+=((\[[^\]]*\])|([^\s,\[]+))$/;
+const validateExcludeNamespaceSelectors = (input = ''): string | undefined => {
+  if (!input.trim()) return undefined;
+
+  const entries: string[] = [];
+  let depth = 0;
+  let current = '';
+  for (const char of input) {
+    if (char === '[') depth++;
+    else if (char === ']') depth--;
+    else if (char === ',' && depth === 0) {
+      entries.push(current.trim());
+      current = '';
+      continue;
+    }
+    current += char;
+  }
+  if (current.trim()) entries.push(current.trim());
+
+  const invalid = entries.find((e) => !SELECTOR_ENTRY_RE.test(e));
+  if (invalid) {
+    return `Invalid selector "${invalid}". Use key=value or key=[value1, value2] format.`;
+  }
+  return undefined;
+};
+
 const validateWorkerVolumeSize = (
   size: number,
   allValues: object,
@@ -1913,6 +1940,7 @@ export {
   validateListOfBalancingLabels,
   validateMaxNodes,
   validateMultipleMachinePoolsSubnets,
+  validateExcludeNamespaceSelectors,
   validateNamespacesList,
   validateNumericInput,
   validatePositive,

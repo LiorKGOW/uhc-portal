@@ -70,6 +70,21 @@ const createDefaultRouterRequest = (newData, currentData) => {
     );
   }
 
+  if (newData.defaultRouterExcludeNamespaceSelectors !== undefined) {
+    const apiSelectors = newData.defaultRouterExcludeNamespaceSelectors
+      .filter((r) => r.key.trim())
+      .map((r) => ({
+        key: r.key.trim(),
+        values: r.values
+          .split(',')
+          .map((v) => v.trim())
+          .filter(Boolean),
+      }));
+    if (!isEqual(apiSelectors, currentData.default.excludeNamespaceSelectors || [])) {
+      requestDefaultRouter.excluded_namespace_selectors = apiSelectors;
+    }
+  }
+
   if (
     newData.isDefaultRouterNamespaceOwnershipPolicyStrict !== undefined &&
     newData.isDefaultRouterNamespaceOwnershipPolicyStrict !==

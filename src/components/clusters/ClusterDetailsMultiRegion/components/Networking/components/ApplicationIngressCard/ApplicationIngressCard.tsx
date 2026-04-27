@@ -18,6 +18,8 @@ import {
 import { isHibernating, isHypershiftCluster } from '~/components/clusters/common/clusterStates';
 import { CloudProviderType } from '~/components/clusters/wizards/common';
 import { modalActions } from '~/components/common/Modal/ModalActions';
+import { useFeatureGate } from '~/queries/featureGates/useFetchFeatureGate';
+import { GCP_EXCLUDE_NAMESPACE_SELECTORS } from '~/queries/featureGates/featureConstants';
 import { isRestrictedEnv } from '~/restrictedEnv';
 import { Ingress } from '~/types/clusters_mgmt.v1';
 import { LoadBalancerFlavor } from '~/types/clusters_mgmt.v1/enums';
@@ -31,6 +33,7 @@ import {
 } from '../../NetworkingHelpers';
 import NetworkingSelector, {
   excludedNamespacesAsString,
+  excludeNamespaceSelectorsAsString,
   routeSelectorsAsString,
 } from '../../NetworkingSelector';
 import { LoadBalancerFlavorLabel } from '../constants';
@@ -38,6 +41,7 @@ import EditApplicationIngressDialog from '../EditApplicationIngressDialog';
 import LoadBalancerPopover from '../LoadBalancerPopover';
 
 import { ExcludedNamespacesPopover } from './ExcludedNamespacesPopover';
+import { ExcludeNamespaceSelectorsPopover } from './ExcludeNamespaceSelectorsPopover';
 import { NamespaceOwnerPolicyPopover } from './NamespaceOwnerPolicyPopover';
 import { RouteSelectorsPopover } from './RouteSelectorsPopover';
 import { WildcardPolicyPopover } from './WildcardsPolicyPopover';
@@ -87,6 +91,7 @@ const ApplicationIngressCard: React.FC<ApplicationIngressCardProps> = ({
 }) => {
   const clusterRouters = NetworkingSelector(clusterRoutersData);
   const dispatch = useDispatch();
+  const isExcludeNamespaceSelectorsEnabled = useFeatureGate(GCP_EXCLUDE_NAMESPACE_SELECTORS);
 
   const { canEdit } = cluster;
   const isHypershift = isHypershiftCluster(cluster);
@@ -102,6 +107,7 @@ const ApplicationIngressCard: React.FC<ApplicationIngressCardProps> = ({
   const {
     routeSelectors: defaultRouterSelectors,
     excludedNamespaces: defaultRouterExcludedNamespacesFlag,
+    excludeNamespaceSelectors: defaultRouterExcludeNamespaceSelectors,
     loadBalancer,
     address: defaultRouterAddress,
     isPrivate: isDefaultRouterPrivate,
@@ -172,6 +178,23 @@ const ApplicationIngressCard: React.FC<ApplicationIngressCardProps> = ({
                   isDisabled
                 />
               </FormGroup>
+
+              {isExcludeNamespaceSelectorsEnabled && (
+                <FormGroup
+                  fieldId="defaultRouterExcludeNamespaceSelectors"
+                  label="Exclude namespace selectors"
+                  labelHelp={<ExcludeNamespaceSelectorsPopover />}
+                  isStack
+                >
+                  <TextInput
+                    id="defaultRouterExcludeNamespaceSelectors"
+                    value={excludeNamespaceSelectorsAsString(
+                      defaultRouterExcludeNamespaceSelectors,
+                    )}
+                    isDisabled
+                  />
+                </FormGroup>
+              )}
 
               <FormGroup fieldId="clusterRoutesTlsSecretRef" label="TLS Secret name" isStack>
                 <TextInput

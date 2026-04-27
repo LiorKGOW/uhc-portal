@@ -3,7 +3,7 @@ import React from 'react';
 import classNames from 'classnames';
 import { Field } from 'formik';
 
-import { FormGroup } from '@patternfly/react-core';
+import { Content, FormGroup } from '@patternfly/react-core';
 
 import {
   checkRouteSelectors,
@@ -15,6 +15,8 @@ import {
   ExcludedNamespacesHelpText,
   ExcludedNamespacesPopover,
 } from '~/components/clusters/ClusterDetailsMultiRegion/components/Networking/components/ApplicationIngressCard/ExcludedNamespacesPopover';
+import { ExcludeNamespaceSelectorsPopover } from '~/components/clusters/ClusterDetailsMultiRegion/components/Networking/components/ApplicationIngressCard/ExcludeNamespaceSelectorsPopover';
+import ExcludeNamespaceSelectorsFieldArray from '~/components/clusters/ClusterDetailsMultiRegion/components/Networking/components/ApplicationIngressCard/ExcludeNamespaceSelectorsFieldArray';
 import { NamespaceOwnerPolicyPopover } from '~/components/clusters/ClusterDetailsMultiRegion/components/Networking/components/ApplicationIngressCard/NamespaceOwnerPolicyPopover';
 import {
   RouteSelectorsHelpText,
@@ -24,6 +26,8 @@ import { WildcardPolicyPopover } from '~/components/clusters/ClusterDetailsMulti
 import { LoadBalancerFlavorLabel } from '~/components/clusters/ClusterDetailsMultiRegion/components/Networking/components/constants';
 import LoadBalancerPopover from '~/components/clusters/ClusterDetailsMultiRegion/components/Networking/components/LoadBalancerPopover';
 import { useFormState } from '~/components/clusters/wizards/hooks';
+import { GCP_EXCLUDE_NAMESPACE_SELECTORS } from '~/queries/featureGates/featureConstants';
+import { useFeatureGate } from '~/queries/featureGates/useFetchFeatureGate';
 import {
   ReduxCheckbox,
   ReduxVerticalFormGroup,
@@ -55,6 +59,7 @@ export const DefaultIngressFieldsFormik: React.FC<DefaultIngressFieldsFormikProp
     getFieldProps, // Access: name, value, onBlur, onChange for a <Field>, useful for mapping to a field
     getFieldMeta, // Access: error, touched for a <Field>, useful for mapping to a field
   } = useFormState();
+  const isExcludeNamespaceSelectorsEnabled = useFeatureGate(GCP_EXCLUDE_NAMESPACE_SELECTORS);
 
   return (
     <>
@@ -123,6 +128,25 @@ export const DefaultIngressFieldsFormik: React.FC<DefaultIngressFieldsFormikProp
           />
         </FormGroup>
       )}
+
+      {hasSufficientIngressEditVersion &&
+        !isHypershiftCluster &&
+        isExcludeNamespaceSelectorsEnabled && (
+          <FormGroup
+            className={className}
+            label="Exclude namespace selectors"
+            labelHelp={<ExcludeNamespaceSelectorsPopover />}
+          >
+            <ExcludeNamespaceSelectorsFieldArray
+              name="defaultRouterExcludeNamespaceSelectors"
+              disabled={areFieldsDisabled}
+            />
+            <Content component="p">
+              <strong>Warning:</strong> Do not exclude openshift-console or openshift-authentication
+              namespaces as they are vital to cluster operations.
+            </Content>
+          </FormGroup>
+        )}
 
       {isDay2 && hasSufficientIngressEditVersion && !isHypershiftCluster && (
         <>

@@ -21,12 +21,15 @@ import { useEditClusterIngressMutation } from '~/queries/ClusterDetailsQueries/N
 import { useGlobalState } from '~/redux/hooks';
 import { LoadBalancerFlavor } from '~/types/clusters_mgmt.v1/enums';
 import { ErrorState } from '~/types/types';
+import { trackEvents } from '~/common/analytics';
+import useAnalytics from '~/hooks/useAnalytics';
 
 import {
   ClusterRouters,
   excludedNamespacesAsString,
   routeSelectorsAsString,
 } from '../../NetworkingSelector';
+import { SelectorRow } from '../ApplicationIngressCard/ExcludeNamespaceSelectorsFieldArray';
 
 type EditApplicationIngressDialogProps = {
   hasSufficientIngressEditVersion?: boolean;
@@ -56,6 +59,7 @@ const EditApplicationIngressDialog: React.FC<EditApplicationIngressDialogProps> 
     mutate: editClusterIngress,
   } = useEditClusterIngressMutation(clusterID, region);
   const dispatch = useDispatch();
+  const track = useAnalytics();
   const isOpen = useGlobalState((state) => shouldShowModal(state, modals.EDIT_APPLICATION_INGRESS));
 
   if (!isOpen) {
@@ -80,6 +84,12 @@ const EditApplicationIngressDialog: React.FC<EditApplicationIngressDialogProps> 
         defaultRouterExcludedNamespacesFlag: excludedNamespacesAsString(
           clusterRouters.default?.excludedNamespaces,
         ),
+        defaultRouterExcludeNamespaceSelectors: (
+          clusterRouters.default?.excludeNamespaceSelectors ?? []
+        ).map<SelectorRow>((s) => ({
+          key: s.key ?? '',
+          values: (s.values ?? []).join(', '),
+        })),
         isDefaultRouterNamespaceOwnershipPolicyStrict:
           clusterRouters.default?.isNamespaceOwnershipPolicyStrict,
         isDefaultRouterWildcardPolicyAllowed: clusterRouters.default?.isWildcardPolicyAllowed,
@@ -105,6 +115,9 @@ const EditApplicationIngressDialog: React.FC<EditApplicationIngressDialogProps> 
           { formData, currentData },
           {
             onSuccess: () => {
+              if (values.defaultRouterExcludeNamespaceSelectors?.some((r: SelectorRow) => r.key)) {
+                track(trackEvents.IngressExcludeNamespaceSelectorsSet);
+              }
               onClose();
             },
           },
